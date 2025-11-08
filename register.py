@@ -5,8 +5,18 @@ import sys
 import requests
 
 
+DEFAULT_SERVER_URL = "https://game-platform-v2-914970891924.us-central1.run.app"
+
+
+def _normalise_server(url: str) -> str:
+    base = (url or "").strip() or DEFAULT_SERVER_URL
+    if not base.startswith(("http://", "https://")):
+        base = "https://" + base.lstrip("/")
+    return base.rstrip("/")
+
+
 def main() -> None:
-    server_url = os.getenv("SERVER_URL", "https://game-platform-v2-914970891924.us-central1.run.app").rstrip("/")
+    server_url = _normalise_server(os.getenv("SERVER_URL", ""))
     github_token = os.getenv("GITHUB_TOKEN", "").strip()
 
     if not github_token:
