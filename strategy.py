@@ -6,61 +6,57 @@ from typing import Any, Dict, List
 import requests
 
 
-PLAYER_NAME = os.getenv("PLAYER_NAME", "panenka-template")
 SERVER_URL = os.getenv("SERVER_URL")
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
-
-if not SERVER_URL:
-    raise SystemExit("SERVER_URL env var required")
 
 
 def random_direction() -> str:
     return random.choice(["0", "1", "2"])
 
 
-def extract_opponents(status: Dict[str, Any], self_name: str) -> List[str]:
-    players = status.get("players") or []
-    opponent_names: List[str] = []
+def extract_opponent_ids(state: Dict[str, Any]) -> List[str]:
+    players = state.get("players") or []
+    ids: List[str] = []
     for player in players:
-        name = player.get("playerName") or player.get("player_name")
-        if not name or name == self_name:
-            continue
-        opponent_names.append(name)
-    return opponent_names
+        pid = player.get("player_id") or player.get("playerId")
+        if pid:
+            ids.append(str(pid))
+    return ids
 
 
-def build_action(status: Dict[str, Any], self_name: str) -> Dict[str, Dict[str, str]]:
-    opponent_names = extract_opponents(status, self_name)
-    shoot_map: Dict[str, str] = {name: random_direction() for name in opponent_names}
-    keep_map: Dict[str, str] = {name: random_direction() for name in opponent_names}
-    if not shoot_map:
+def strategy(state: Dict[str, Any]) -> Dict[str, Dict[str, str]]:
+    opponent_ids = extract_opponent_ids(state)
+    shoot = {pid: random_direction() for pid in opponent_ids}
+    keep = {pid: random_direction() for pid in opponent_ids}
+    if not shoot:
         direction = random_direction()
-        shoot_map["*"] = direction
-        keep_map["*"] = direction
-    return {"shoot": shoot_map, "keep": keep_map}
+        shoot["*"] = direction
+        keep["*"] = direction
+    return {"shoot": shoot, "keep": keep}
 
 
 def main() -> None:
-    status_response = requests.get(f"{SERVER_URL}/status", timeout=10)
-    status_response.raise_for_status()
-    status = status_response.json()
+    if not SERVER_URL:
+        raise SystemExit("SERVER_URL env var required")
 
-    action = build_action(status, PLAYER_NAME or "")
+    status = requests.get(f"{SERVER_URL}/status", timeout=10)
+    status.raise_for_status()
+    action = strategy(status.json())
 
     headers = {"Content-Type": "application/json"}
     if GITHUB_TOKEN:
         headers["Authorization"] = f"Bearer {GITHUB_TOKEN}"
 
-    payload = {"action": action}
-    if PLAYER_NAME:
-        payload["player_name"] = PLAYER_NAME
-
-    requests.post(
+    response = requests.post(
         f"{SERVER_URL}/action",
         headers=headers,
-        json=payload,
+        json={"action": action},
         timeout=10,
-    ).raise_for_status()
+    )
+
+    if not response.ok:
+        detail = response.text or response.reason
+        raise SystemExit(f"Submission failed: {response.status_code} {detail}")
 
 
 if __name__ == "__main__":
