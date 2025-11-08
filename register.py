@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""Minimal CLI helper to register this player with the penalty shootout server."""
 import os
 import sys
 
@@ -6,9 +7,13 @@ import requests
 
 
 def main() -> None:
+    # The workflows are expected to populate these two secrets.
+    # Fail fast (with context) if either is missing to avoid confusing HTTP errors.
     server_url = os.getenv("SERVER_URL", "").strip()
     github_token = os.getenv("GITHUB_TOKEN", "").strip()
 
+    # Log which pieces of configuration are present – useful when GitHub Actions redacts
+    # the actual values but still lets us see whether they were set.
     print(
         f"[register] Config state: SERVER_URL={'set' if server_url else 'missing'}, "
         f"GITHUB_TOKEN={'set' if github_token else 'missing'}",
@@ -23,6 +28,7 @@ def main() -> None:
     if not server_url.startswith(("http://", "https://")):
         raise SystemExit(f"SERVER_URL must include scheme (http/https); got '{server_url}'")
 
+    # Keep the base URL tidy before we append the /register path.
     server_url = server_url.rstrip("/")
     print(f"[register] Using endpoint {server_url}/register", flush=True)
 
