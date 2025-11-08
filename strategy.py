@@ -25,35 +25,6 @@ def strategy(state: Dict[str, Any]) -> Dict[str, Dict[str, int]]:
     }
 
 
-def main() -> None:
-    if not SERVER_URL:
-        raise SystemExit("SERVER_URL env var required")
-
-    status = requests.get(f"{SERVER_URL}/status", timeout=10)
-    status.raise_for_status()
-    payload = status.json()
-    action = strategy(payload)
-
-    headers = {"Content-Type": "application/json"}
-    if GITHUB_TOKEN:
-        headers["Authorization"] = f"Bearer {GITHUB_TOKEN}"
-
-    response = requests.post(
-        f"{SERVER_URL}/action",
-        headers=headers,
-        json={"action": action},
-        timeout=10,
-    )
-
-    if not response.ok:
-        detail = response.text or response.reason
-        raise SystemExit(f"Submission failed: {response.status_code} {detail}")
-
-
-if __name__ == "__main__":
-    main()
-
-
 def _resolve_opponents(state: Dict[str, Any], player_name: str) -> List[str]:
     participants: set[str] = set()
 
@@ -81,3 +52,32 @@ def _resolve_opponents(state: Dict[str, Any], player_name: str) -> List[str]:
         raise SystemExit(f"Could not find player '{player_name}' in /status response.")
 
     return sorted(pid for pid in participants if pid != self_name)
+
+
+def main() -> None:
+    if not SERVER_URL:
+        raise SystemExit("SERVER_URL env var required")
+
+    status = requests.get(f"{SERVER_URL}/status", timeout=10)
+    status.raise_for_status()
+    payload = status.json()
+    action = strategy(payload)
+
+    headers = {"Content-Type": "application/json"}
+    if GITHUB_TOKEN:
+        headers["Authorization"] = f"Bearer {GITHUB_TOKEN}"
+
+    response = requests.post(
+        f"{SERVER_URL}/action",
+        headers=headers,
+        json={"action": action},
+        timeout=10,
+    )
+
+    if not response.ok:
+        detail = response.text or response.reason
+        raise SystemExit(f"Submission failed: {response.status_code} {detail}")
+
+
+if __name__ == "__main__":
+    main()
