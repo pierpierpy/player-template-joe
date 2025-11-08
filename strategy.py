@@ -32,7 +32,11 @@ def main() -> None:
     if not SERVER_URL:
         raise SystemExit("SERVER_URL env var required")
 
-    status = requests.get(f"{SERVER_URL}/status", timeout=10)
+    status = requests.get(
+        f"{SERVER_URL}/status",
+        headers={"Authorization": f"Bearer {GITHUB_TOKEN}"},
+        timeout=10,
+    )
     status.raise_for_status()
     payload = status.json()
     action = strategy(payload)
