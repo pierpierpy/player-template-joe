@@ -12,18 +12,9 @@ GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 
 
 def strategy(state: Dict[str, Any]) -> Dict[str, Dict[str, int]]:
-    players = state.get("players") or (state.get("gameState") or {}).get("players") or []
-
-    name_to_id: Dict[str, str] = {}
-    for player in players:
-        pid = player.get("playerId") or player.get("player_id")
-        name = player.get("playerName") or player.get("player_name")
-        if pid and name:
-            name_to_id[str(name)] = str(pid)
-
-    normalized_self = PLAYER_NAME.strip()
-    self_id = name_to_id.get(normalized_self)
-    opponents = [pid for name, pid in name_to_id.items() if name != normalized_self]
+    player_map = state.get("playerNames") or {}
+    self_id = player_map.get(PLAYER_NAME)
+    opponents = [pid for name, pid in player_map.items() if name != PLAYER_NAME]
 
     if not self_id or not opponents:
         return {"shoot": {}, "keep": {}}
