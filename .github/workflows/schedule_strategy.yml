@@ -1,0 +1,54 @@
+name: Schedule Strategy
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  play:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Check schedule toggle
+      id: guard
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        if [ "${{ vars.ENABLE_SCHEDULE }}" = "true" ]; then
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "::notice::Schedule disabled. Set ENABLE_SCHEDULE repo variable to \"true\" to enable."
+          echo "enabled=false" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Install dependencies
+      if: steps.guard.outputs.enabled == 'true'
+      run: pip install requests
+
+    - name: Run strategy (scheduled)
+      if: steps.guard.outputs.enabled == 'true'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GAME_TOKEN }}
+        SERVER_URL: ${{ secrets.SERVER_URL }}
+      run: |
+        if [ -z "$SERVER_URL" ]; then
+          echo "SERVER_URL secret missing."
+          exit 1
+        fi
+        python strategy.py
+
+    - name: Scheduled run disabled
+      if: steps.guard.outputs.enabled != 'true'
+      run: echo "ENABLE_SCHEDULE variable not set to 'true'; skipping scheduled submission."
+
