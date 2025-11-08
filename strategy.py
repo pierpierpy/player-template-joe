@@ -8,28 +8,19 @@ import requests
 
 def strategy(state: Dict[str, Any]) -> Dict[str, Dict[str, str]]:
     players = state.get("players") or []
-    identity = state.get("identity") or {}
-    my_name = (
-        identity.get("player_name")
-        or identity.get("playerName")
-        or identity.get("handle")
-        or ""
-    ).lower()
 
-    opponents: List[str] = []
-    for player in players:
-        pid = player.get("player_id") or player.get("playerId")
-        name = (player.get("player_name") or player.get("playerName") or "").lower()
-        if not pid or (my_name and name == my_name):
-            continue
-        opponents.append(str(pid))
+    opponents = [
+        str(player.get("player_id") or player.get("playerId"))
+        for player in players
+        if player.get("player_id") or player.get("playerId")
+    ]
 
     if not opponents:
         direction = str(np.random.randint(0, 3))
         return {"shoot": {"*": direction}, "keep": {"*": direction}}
 
-    shoot_dirs = np.random.randint(0, 3, size=len(opponents))
-    keep_dirs = np.random.randint(0, 3, size=len(opponents))
+    shoot_dirs = np.random.randint(0, 3, len(opponents))
+    keep_dirs = np.random.randint(0, 3, len(opponents))
 
     return {
         "shoot": {pid: str(direction) for pid, direction in zip(opponents, shoot_dirs)},
