@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 import os
 import random
-from typing import Any, Dict, List
+from functools import lru_cache
+from typing import Any, Dict, List, Optional
 
 import requests
 
@@ -14,13 +15,45 @@ def random_direction() -> str:
     return random.choice(["0", "1", "2"])
 
 
+@lru_cache(maxsize=1)
+def _token_owner() -> Optional[str]:
+    if not GITHUB_TOKEN:
+        return None
+    try:
+        response = requests.get(
+            "https://api.github.com/user",
+            headers={
+                "Accept": "application/vnd.github+json",
+                "Authorization": f"Bearer {GITHUB_TOKEN}",
+            },
+            timeout=10,
+        )
+    except requests.RequestException:
+        return None
+
+    if not response.ok:
+        return None
+
+    try:
+        login = response.json().get("login")
+    except ValueError:
+        return None
+
+    return login.lower() if isinstance(login, str) else None
+
+
 def extract_opponent_ids(state: Dict[str, Any]) -> List[str]:
     players = state.get("players") or []
+    skip_login = _token_owner()
     ids: List[str] = []
     for player in players:
         pid = player.get("player_id") or player.get("playerId")
-        if pid:
-            ids.append(str(pid))
+        if not pid:
+            continue
+        owner = player.get("player_github") or player.get("playerGithub")
+        if skip_login and isinstance(owner, str) and owner.lower() == skip_login:
+            continue
+        ids.append(str(pid))
     return ids
 
 

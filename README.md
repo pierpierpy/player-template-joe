@@ -1,56 +1,89 @@
-# Template Player
+# Neutral Player Template
 
-Minimal starter repo for the penalty-shootout pilots. Fork / copy it for each new bot.
+Starter package for building a penalty-shootout bot without any hard-coded identity.
 
-## Game Snapshot
+## 1. Repository Setup
 
-- Each round every player acts *against every other player* twice: once as shooter, once as keeper.
-- Actions are digits `'0'`, `'1'`, `'2'` (`left`, `centre`, `right`).
-- The turn state returned by `/status` looks like:
+- **Fork vs clone:** use a **fork** if you intend to rely on GitHub Actions (recommended). A fork keeps the workflow file intact, lets you manage secrets per copy, and requires no extra remotes. A plain clone is fine for local iteration, but you must push to a repository you control before scheduled runs will work.
+- **Create repository secrets and variables** under *Settings → Secrets and variables → Actions* for the repo that will host the bot:
+  - Secrets:
+    - `GAME_TOKEN` – fine-grained personal access token (PAT) scoped to this repository only. Enable the `Actions → Read and write` and `Workflows → Read and write` permissions. No other scopes are required.
+    - `SERVER_URL` – base URL of the UBX server, e.g. `https://game-platform-v2-914970891924.us-central1.run.app`.
+  - Variables (optional):
+    - `ENABLE_SCHEDULE` – set to `true` to let the cron job run. Leave unset or `false` to keep the workflow dormant unless you trigger it manually.
+
+## 2. Registration
+
+1. Choose an unused player handle (all lowercase, no spaces recommended).
+2. Run `register.py` locally or via GitHub Actions:
+   ```bash
+   export SERVER_URL="https://game-platform-v2-914970891924.us-central1.run.app"
+   export GITHUB_TOKEN="ghp_...."        # same PAT you stored as GAME_TOKEN
+   export PLAYER_NAME="your-handle"
+   python register.py
+   ```
+   You can also pass the player name as the first CLI argument instead of `PLAYER_NAME`.
+3. The script echoes whether the player was newly registered or already present and prints the server-assigned player ID. No further configuration is required inside `strategy.py`; the API resolves the player via the token.
+
+## 3. Strategy Execution
+
+- `strategy.py` fetches `/status`, filters out your own player using the PAT owner name, builds random `"shoot"` and `"keep"` maps, and submits them via `/action`.
+- Replace the logic inside `strategy()` with your own. The payload must keep the structure returned by the helper (`{"shoot": {...}, "keep": {...}}`) with directions in `{"0","1","2"}`.
+- **State format (`/status` response excerpt):**
   ```json
   {
     "gameState": {
-      "turn_id": 3,
+      "turn_id": 7,
       "state": [
         {
-          "cassano": { "shoot": {"ibrahimovic": "2"}, "keep": {"ibrahimovic": "1"} },
-          "ibrahimovic": { "shoot": {"cassano": "0"}, "keep": {"cassano": "2"} }
-        },
-        ...
+          "player-id-1": { "player-id-2": "2", "player-id-3": "0" },
+          "player-id-2": { "player-id-1": "1", "player-id-3": "1" }
+        }
       ]
+    },
+    "players": [
+      {
+        "player_id": "player-id-1",
+        "player_name": "handle-1",
+        "player_github": "github-user-1",
+        "current_action": null,
+        "reward_history": [1.5, 2.0]
+      }
+    ]
+  }
+  ```
+  - `gameState.state` is a list of rounds; each round maps shooter IDs to target-direction mappings.
+  - `players` lists metadata for every registered participant.
+- **Action format (payload sent to `/action`):**
+  ```json
+  {
+    "action": {
+      "shoot": {
+        "player-id-2": "2",
+        "player-id-3": "0"
+      },
+      "keep": {
+        "player-id-2": "1",
+        "player-id-3": "1"
+      }
     }
   }
   ```
-- For this template we answer with `"shoot"`/`"keep"` maps keyed by **player name**.
+  - Keys under `shoot`/`keep` are opponent IDs. Use `"*": direction` to broadcast a default.
+  - Directions must be strings `"0"`, `"1"`, or `"2"`.
 
-## Repo Contents
+## 4. GitHub Actions Workflow
 
-- `strategy.py` – fetches `/status`, builds random `"shoot"`/`"keep"` maps, and posts the action.
-- `register.py` – helper you can run locally or from CI to register the player.
-- `.github/workflows/`
-  - `register.yml` – manual workflow to run `register.py`.
-  - `manual_strategy.yml` – triggers a single strategy run on demand.
-  - `scheduled_strategy.yml` – cron job that only runs when you set a toggle (see below).
+- `.github/workflows/schedule_strategy.yml` runs every 10 minutes (`cron: */10`) and is also exposed via **Actions → Run workflow** for ad-hoc submission.
+- To start the schedule:
+  1. Ensure `GAME_TOKEN` and `SERVER_URL` secrets are populated.
+  2. Set repository variable `ENABLE_SCHEDULE` to `true`.
+  3. The next cron tick will fetch dependencies, execute `strategy.py`, and post the action. Logs surface under the workflow run.
+- To trigger manually, leave `ENABLE_SCHEDULE` undefined, open the workflow page, and hit **Run workflow**. The run succeeds even when the schedule toggle is off.
 
-## Setup Checklist
+## 5. Local Iteration
 
-1. Set secrets via **Settings → Secrets and variables → Actions**:
-   - `GAME_TOKEN` – fine-grained personal access token with permissions
-     - Repository: this repo only
-     - Permissions: `actions:read/write`, `metadata:read`
-   - `SERVER_URL` – e.g. `https://game-platform-v2-914970891924.us-central1.run.app`
-2. (Optional) set repository **Variable** `ENABLE_SCHEDULE=true` to turn on the cron job.
-   - Leave it unset/false and the scheduled workflow will exit immediately with a notice.
-   - You can still run the workflow manually via “Run workflow”.
+- Install dependencies: `pip install -r requirements.txt` (only `requests` is needed; feel free to manage it however you like).
+- Run `python strategy.py` with `SERVER_URL` and `GITHUB_TOKEN` exported to emulate the CI behaviour.
 
-## Running Workflows
-
-- **Register Player** – open Actions → *Register Player* → *Run workflow*. Re-run if you rotate tokens.
-- **Manual Strategy** – trigger on demand to see a single action submission.
-- **Scheduled Strategy** – runs every 10 minutes once `ENABLE_SCHEDULE=true`. Disable by clearing that variable.
-
-## Customising `strategy.py`
-
-`strategy.py` currently builds random `"shoot"`/`"keep"` maps (broadcasting `"*"` if alone). Swap in your own logic—just fill those maps with `'0'`, `'1'`, `'2'` per opponent name. The helper already fetches `/status` for you.
-
-That’s it—copy the repo, set the secrets, and you’re ready to launch your own . Good luck!
+Keep this template under version control, customise the strategy, and you are ready for the pilot. No player name is embedded in the action path; the token alone authenticates each submission.

@@ -1,12 +1,15 @@
-name: Schedule Strategy
+name: Scheduled Strategy
 
 on:
   schedule:
     - cron: '*/10 * * * *'
   workflow_dispatch:
 
+run-name: Scheduled Strategy
+
 jobs:
   play:
+    continue-on-error: true
     runs-on: ubuntu-latest
 
     steps:
@@ -36,19 +39,10 @@ jobs:
       if: steps.guard.outputs.enabled == 'true'
       run: pip install requests
 
-    - name: Run strategy (scheduled)
+    - name: Run strategy
       if: steps.guard.outputs.enabled == 'true'
       env:
         GITHUB_TOKEN: ${{ secrets.GAME_TOKEN }}
         SERVER_URL: ${{ secrets.SERVER_URL }}
-      run: |
-        if [ -z "$SERVER_URL" ]; then
-          echo "SERVER_URL secret missing."
-          exit 1
-        fi
-        python strategy.py
-
-    - name: Scheduled run disabled
-      if: steps.guard.outputs.enabled != 'true'
-      run: echo "ENABLE_SCHEDULE variable not set to 'true'; skipping scheduled submission."
+      run: python strategy.py
 
