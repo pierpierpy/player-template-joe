@@ -8,7 +8,7 @@ Starter package for building a penalty-shootout bot without any hard-coded ident
 - **Create repository secrets and variables** under *Settings → Secrets and variables → Actions* for the repo that will host the bot:
   - Secrets:
     - `GAME_TOKEN` – fine-grained personal access token (PAT) scoped to this repository only. Enable the `Actions → Read and write` and `Workflows → Read and write` permissions. No other scopes are required.
-    - `SERVER_URL` – base URL of the UBX server, e.g. `https://game-platform-v2-914970891924.us-central1.run.app`.
+    - `SERVER_URL` – base URL of the UBX server, e.g. `https://game-platform-v2-914970891924.us-central1.run.app`. Avoid pasting paths (like `/register`) onto the end; the scripts append those automatically.
   - Variables (optional):
     - `ENABLE_SCHEDULE` – set to `true` to let the cron job run. Leave unset or `false` to keep the workflow dormant unless you trigger it manually.
 
@@ -24,6 +24,10 @@ Starter package for building a penalty-shootout bot without any hard-coded ident
    ```
    You can also pass the player name as the first CLI argument instead of `PLAYER_NAME`.
 3. The script echoes whether the player was newly registered or already present and prints the server-assigned player ID. No further configuration is required inside `strategy.py`; the API resolves the player via the token.
+4. Troubleshooting tips:
+   - If you see `SERVER_URL env var required`, double-check the secret or local export.
+   - If you hit `Invalid URL '/register'`, it means the URL was missing a scheme (`https://`) or was left blank.
+   - A `404 {"detail":"Not Found"}` usually means the URL contained extra path segments. Use the `show_state.py` utility (below) to confirm the `/status` endpoint resolves correctly.
 
 ## 3. Strategy Execution
 
@@ -85,5 +89,6 @@ Starter package for building a penalty-shootout bot without any hard-coded ident
 
 - Install dependencies: `pip install -r requirements.txt` (only `requests` is needed; feel free to manage it however you like).
 - Run `python strategy.py` with `SERVER_URL` and `GITHUB_TOKEN` exported to emulate the CI behaviour.
+- Quick status check: run `python show_state.py` (optionally set `SERVER_URL`) to print the current `/status` payload and verify connectivity before pushing changes.
 
 Keep this template under version control, customise the strategy, and you are ready for the pilot. No player name is embedded in the action path; the token alone authenticates each submission.
