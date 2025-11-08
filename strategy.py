@@ -8,7 +8,13 @@ import requests
 
 def strategy(state: Dict[str, Any]) -> Dict[str, Dict[str, str]]:
     players = state.get("players") or []
-    my_name = (PLAYER_NAME or "").lower()
+    identity = state.get("identity") or {}
+    my_name = (
+        identity.get("player_name")
+        or identity.get("playerName")
+        or identity.get("handle")
+        or ""
+    ).lower()
 
     opponents: List[str] = []
     for player in players:
@@ -31,7 +37,6 @@ def strategy(state: Dict[str, Any]) -> Dict[str, Dict[str, str]]:
     }
 
 
-PLAYER_NAME = os.getenv("PLAYER_NAME")
 SERVER_URL = os.getenv("SERVER_URL")
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 
@@ -42,7 +47,8 @@ def main() -> None:
 
     status = requests.get(f"{SERVER_URL}/status", timeout=10)
     status.raise_for_status()
-    action = strategy(status.json())
+    payload = status.json()
+    action = strategy(payload)
 
     headers = {"Content-Type": "application/json"}
     if GITHUB_TOKEN:
