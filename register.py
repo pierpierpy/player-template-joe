@@ -5,27 +5,26 @@ import sys
 import requests
 
 
-DEFAULT_SERVER_URL = "https://game-platform-v2-914970891924.us-central1.run.app"
-
-
 def main() -> None:
-    raw_server = os.getenv("SERVER_URL", "").strip()
-    if raw_server:
-        server_url = raw_server
-    else:
-        server_url = DEFAULT_SERVER_URL
-        print(f"[register] SERVER_URL not set; defaulting to {server_url}", flush=True)
+    server_url = os.getenv("SERVER_URL", "").strip()
+    github_token = os.getenv("GITHUB_TOKEN", "").strip()
+
+    print(
+        f"[register] Config state: SERVER_URL={'set' if server_url else 'missing'}, "
+        f"GITHUB_TOKEN={'set' if github_token else 'missing'}",
+        flush=True,
+    )
+
+    if not server_url:
+        raise SystemExit("SERVER_URL environment variable not set")
+    if not github_token:
+        raise SystemExit("GITHUB_TOKEN environment variable not set")
 
     if not server_url.startswith(("http://", "https://")):
-        server_url = "https://" + server_url.lstrip("/")
-        print(f"[register] Added https:// scheme → {server_url}", flush=True)
+        raise SystemExit(f"SERVER_URL must include scheme (http/https); got '{server_url}'")
 
     server_url = server_url.rstrip("/")
     print(f"[register] Using endpoint {server_url}/register", flush=True)
-    github_token = os.getenv("GITHUB_TOKEN", "").strip()
-
-    if not github_token:
-        raise SystemExit("GITHUB_TOKEN environment variable not set")
 
     try:
         response = requests.post(
