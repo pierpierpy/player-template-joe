@@ -34,22 +34,27 @@ Test changes locally by exporting `SERVER_URL` and `GITHUB_TOKEN` and running `p
 - `playerIds`: every registered player ID (these are what you target in your action maps).
 - `myPlayerId`: the ID associated with your GitHub token.
 - `opponents`: convenience list of all other IDs.
-- `state`: nested structure that captures past rounds, scores, and other bookkeeping. For penalty shootout you will see something like:
+- `state`: a list where each entry records one completed turn. Penalty shootout rounds look like:
   ```json
-  {
-    "round": 12,
-    "scoreboard": {
-      "player-id-A": {"goals": 7, "saves": 4},
-      "player-id-B": {"goals": 5, "saves": 6}
-    },
-    "history": {
-      "1": {
-        "player-id-A": {"shoot": 2, "keep": 1, "scored": true},
-        "player-id-B": {"shoot": 0, "keep": 2, "scored": false}
+  [
+    {
+      "_turnId": 1,
+      "player-id-A": {
+        "shoot": { "player-id-B": "2" },
+        "keep":  { "player-id-B": "0" },
+        "outcome": { "player-id-B": { "goal": 1 } }
       },
-      "...": "..."
+      "player-id-B": {
+        "shoot": { "player-id-A": "1" },
+        "keep":  { "player-id-A": "2" },
+        "outcome": { "player-id-A": { "goal": 0 } }
+      }
+    },
+    {
+      "_turnId": 2,
+      "...": { "...": "..." }
     }
-  }
+  ]
   ```
 - `turn`, `registrationPhase`, `gamePhase`: metadata describing where the match is.
 
@@ -57,22 +62,31 @@ Store or inspect this data to drive smarter strategies.
 
 ## 5. Building the action payload
 
-Submissions to `/action` must look like:
+Your `strategy(state)` function must return a dictionary with two maps, one for shooting and one for keeping. For example:
+
+```json
+{
+  "shoot": { "player-id-A": 2, "player-id-B": 1 },
+  "keep":  { "player-id-A": 0, "player-id-B": 2 }
+}
+```
+
+- `shoot` lists the direction (`0`, `1`, or `2`) you will shoot against each opponent.
+- `keep` lists the direction you will guard against each opponent.
+- Opponent IDs come straight from `playerIds`/`opponents` in the `/status` payload. If you want to send the same choice to everyone, use `"*"` (an asterisk) as the key.
+
+When the template posts to `/action` it wraps that return value inside a JSON body like this:
 
 ```json
 {
   "action": {
-    "shoot": { "opponent-id": 2 },
-    "keep":  { "*": 1 }
+    "shoot": { "player-id-A": 2, "player-id-B": 1 },
+    "keep":  { "player-id-A": 0, "player-id-B": 2 }
   }
 }
 ```
 
-- `shoot` describes the direction (`0`, `1`, or `2`) you will shoot at each opponent. Keys must be opponent IDs from the status payload or the wildcard `"*"`.
-- `keep` sets your goalkeeper direction against each opponent (same key/value rules as above).
-- Empty maps are acceptable until you have opponents.
-
-The server merges the two maps per opponent when resolving the turn.
+If you add extra fields (for example `player_name`) make sure they live alongside `action`, not inside it. The server combines the shoot and keep directions when it resolves each round.
 
 ## 6. GitHub Actions
 
