@@ -1,60 +1,35 @@
 # Penalty Shootout Game Rule
 
-Let $N$ be the finite set of active players. Server time is indexed by discrete turns $t = 1,2,\dots$. During each turn the platform considers every unordered pair $\{i,j\} \subset N$ with $i \neq j$. For the ordered realisation $(i,j)$ the interpretation is “player $i$ shoots on player $j$”; the reverse ordering $(j,i)$ is processed in the same turn.
+Let N denote the finite set of active players. Server time evolves in discrete turns (t = 1, 2, …). During each turn the platform inspects every unordered pair {i, j} with i ≠ j. For the ordered realisation (i, j) we read the event as “player i shoots on player j”; the reverse ordering (j, i) is evaluated in the same turn.
 
 ## Action space
 
-At the start of turn $t$, every $i \in N$ submits
+At the start of turn t each player i submits an action consisting of two maps:
 
-\[
-a_i(t) = \bigl\{(\texttt{shoot}, M^{\mathrm{S}}_i(t)), (\texttt{keep}, M^{\mathrm{K}}_i(t))\bigr\}.
-\]
+- shoot map: opponents → {0, 1, 2}
+- keep map: opponents → {0, 1, 2}
 
-where the maps $M^{\mathrm{S}}_i(t), M^{\mathrm{K}}_i(t) : N \setminus \{i\} \rightarrow \{0,1,2\}$ prescribe shooting and keeping directions against each opponent. Labels $0,1,2$ correspond to left, centre, right. A broadcast entry `"*"` is interpreted as a fallback value:
-\[
-M^{\mathrm{S}}_i(t,j) =
-\begin{cases}
-\text{specified value}, & \text{if } j \text{ is listed explicitly},\\
-M^{\mathrm{S}}_i(t,"*"), & \text{otherwise},
-\end{cases}
-\]
+The labels 0, 1, 2 correspond respectively to left, centre, and right. Players may provide an explicit direction for every opponent or rely on a broadcast entry "*" to supply a fallback value for any opponent not listed. The server resolves the broadcast before play and applies the same convention to both shoot and keep maps.
 
-and analogously for $M^{\mathrm{K}}_i(t)$.
+## State tracked by the server
 
-## Public state
+The public state is a history H(t) = {h₁, …, h_t}. Each round record h_r contains:
 
-The state observed by all players is the history $H(t) = \{h_1,\dots,h_t\}$. For each round $r$, the record
-\[
-h_r = \bigl\{ (k,\, \Theta_k(r)) : k \in N \bigr\} \cup \bigl\{(\_turnId, r)\bigr\}
-\]
+- the turn identifier `_turnId = r`
+- for every player k, the maps `shoot_k(r)` and `keep_k(r)` recorded as strings "0", "1", "2"
+- when outcomes have been realised, an additional map `outcome_k(r)` indicating, for each opponent, whether the shot against or by that opponent resulted in a goal (1) or a save (0)
 
-contains, for every player $k$, the tuple
-\[
-\Theta_k(r) = \left(\text{shoot}_{k}(r),\, \text{keep}_{k}(r),\, \text{outcome}_{k}(r)\right).
-\]
+If the outcome information is not yet available, the field is omitted for that round.
 
-where $\text{shoot}_k(r)$ and $\text{keep}_k(r)$ reproduce the canonical direction maps (stored as strings `"0"`, `"1"`, `"2"`). Once the stochastic resolution is complete, $\text{outcome}_k(r)$ records realised indicators $\{\text{opponent} \mapsto \text{goal}\in\{0,1\}\}$; otherwise the field is absent.
+## Payoff mechanism
 
-## Match mechanics
+Let P be the 3 × 3 success-probability matrix whose rows index shooting directions and columns index keeping directions. The matrix satisfies the dominance property `P[d, d] < P[u, v]` for every direction d and any ordered pair (u, v) with u ≠ v. Intuitively, a shot aimed away from the keeper’s chosen direction strictly improves the conversion probability relative to a shot that matches it.
 
-Let $P = (p_{d,s})_{d,s \in \{0,1,2\}}$ denote the success-probability matrix governing shot outcomes. Its structure satisfies
-\[
-p_{d,d} < p_{u,v} \quad \text{for every } d \in \{0,1,2\} \text{ and all ordered pairs } (u,v) \text{ with } u \neq v,
-\]
+During round t, a duel involving shooter i and keeper j proceeds as follows:
 
-so any shot aimed away from the keeper’s chosen direction succeeds with strictly higher probability than a shot that matches it.
+1. The server reads the directions `a = shoot_i(j)` and `b = keep_j(i)` after broadcast resolution.
+2. A Bernoulli random draw succeeds with probability `P[a, b]`.
+3. Success is recorded as a goal for i; failure is recorded as a save for j.
+4. Payoffs are realised outcomes: the shooter receives `R_goal` for a goal, the keeper receives `R_save` for a save. Default values satisfy `R_goal = R_save = 1`, with alternative parameters accepted via the environment variables `PENALTY_GOAL_REWARD` and `PENALTY_SAVE_REWARD`.
 
-Fix a duel $(i,j)$ in round $t$. Let
-\[
-a = M^{\mathrm{S}}_{i}(t,j), \qquad b = M^{\mathrm{K}}_{j}(t,i).
-\]
-Conditional on $(a,b)$ the platform draws
-\[
-Y_{ij}(t) \sim \mathrm{Bernoulli}(p_{ab}).
-\]
-
-If $Y_{ij}(t)=1$, the shot is converted and shooter $i$ receives $R_{\mathrm{goal}}$; if $Y_{ij}(t)=0$, the keeper $j$ records a save and receives $R_{\mathrm{save}}$. By default $R_{\mathrm{goal}} = R_{\mathrm{save}} = 1$, configurable via `PENALTY_GOAL_REWARD` and `PENALTY_SAVE_REWARD`.
-
-## Turn processing
-
-Let $\tau_t$ be the server timestamp at which turn $t$ is processed. All actions submitted in the half-open interval $[\tau_{t-1}, \tau_t)$ are canonicalised and evaluated during turn $t$, while messages arriving after $\tau_t$ are queued for turn $t+1$. Authentication relies solely on the GitHub token transmitted in the HTTP `Authorization` header; the payload contains only the maps $M^{\mathrm{S}}_i(t)$ and $M^{\mathrm{K}}_i(t)$. The server enforces that these maps share an identical domain and exclude player $i$. A participant may submit multiple actions within the interval; the final valid action received before $\tau_t$ is the one implemented. Continuous play is obtained by running automated submissions at the cadence chosen by the organiser.
+The same procedure is applied to the symmetric event (j, i) within the turn. Continuous play arises because the scheduler triggers strategy submissions at a fixed cadence.
