@@ -6,51 +6,51 @@ Let $N$ be the finite set of active players. Server time is indexed by discrete 
 
 At the start of turn $t$, every $i \in N$ submits
 
-$$
-a_i(t) = \{(\texttt{shoot},\, M^{\mathrm{S}}_i(t)),\ (\texttt{keep},\, M^{\mathrm{K}}_i(t))\}.
-$$
+\[
+a_i(t) = \bigl\{(\texttt{shoot}, M^{\mathrm{S}}_i(t)), (\texttt{keep}, M^{\mathrm{K}}_i(t))\bigr\}.
+\]
 where the maps $M^{\mathrm{S}}_i(t), M^{\mathrm{K}}_i(t) : N \setminus \{i\} \rightarrow \{0,1,2\}$ prescribe shooting and keeping directions against each opponent. Labels $0,1,2$ correspond to left, centre, right. A broadcast entry `"*"` is interpreted as a fallback value:
-$$
+\[
 M^{\mathrm{S}}_i(t,j) =
 \begin{cases}
 \text{specified value}, & \text{if } j \text{ is listed explicitly},\\
 M^{\mathrm{S}}_i(t,"*"), & \text{otherwise},
 \end{cases}
-$$
+\]
 
 and analogously for $M^{\mathrm{K}}_i(t)$.
 
 ## Public state
 
 The state observed by all players is the history $H(t) = \{h_1,\dots,h_t\}$. For each round $r$, the record
-$$
+\[
 h_r = \bigl\{ (k,\, \Theta_k(r)) : k \in N \bigr\} \cup \bigl\{(\_turnId, r)\bigr\}
-$$
+\]
 
 contains, for every player $k$, the tuple
-$$
+\[
 \Theta_k(r) = \left(\text{shoot}_{k}(r),\, \text{keep}_{k}(r),\, \text{outcome}_{k}(r)\right).
-$$
+\]
 
 where $\text{shoot}_k(r)$ and $\text{keep}_k(r)$ reproduce the canonical direction maps (stored as strings `"0"`, `"1"`, `"2"`). Once the stochastic resolution is complete, $\text{outcome}_k(r)$ records realised indicators $\{\text{opponent} \mapsto \text{goal}\in\{0,1\}\}$; otherwise the field is absent.
 
 ## Match mechanics
 
 Let $P = (p_{d,s})_{d,s \in \{0,1,2\}}$ denote the success-probability matrix governing shot outcomes. Its structure satisfies
-$$
+\[
 p_{d,d} < p_{u,v} \quad \text{for every } d \in \{0,1,2\} \text{ and all ordered pairs } (u,v) \text{ with } u \neq v,
-$$
+\]
 
 so any shot aimed away from the keeper’s chosen direction succeeds with strictly higher probability than a shot that matches it.
 
 Fix a duel $(i,j)$ in round $t$. Let
-$$
+\[
 a = M^{\mathrm{S}}_{i}(t,j), \qquad b = M^{\mathrm{K}}_{j}(t,i).
-$$
+\]
 Conditional on $(a,b)$ the platform draws
-$$
+\[
 Y_{ij}(t) \sim \mathrm{Bernoulli}(p_{ab}).
-$$
+\]
 
 If $Y_{ij}(t)=1$, the shot is converted and shooter $i$ receives $R_{\mathrm{goal}}$; if $Y_{ij}(t)=0$, the keeper $j$ records a save and receives $R_{\mathrm{save}}$. By default $R_{\mathrm{goal}} = R_{\mathrm{save}} = 1$, configurable via `PENALTY_GOAL_REWARD` and `PENALTY_SAVE_REWARD`.
 
