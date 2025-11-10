@@ -8,7 +8,7 @@ The state at turn $t$ is the set $H(t) = \{h_1, …, h_t\}$. Each $h_r$ contains
 
 - `shoot`: opponents → direction ($0$, $1$, or $2$)
 - `keep`: opponents → direction ($0$, $1$, or $2$)
-- `outcome`: opponents → realised result (`goal = 1` or `goal = 0`)
+- `outcome`: opponents → `goal' $1$ or $0$
 
 Until a duel resolves, the corresponding row in `outcome` remains empty.
 
