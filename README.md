@@ -1,6 +1,6 @@
 # Player Template
 
-Quick-start kit for a penalty-shootout bot.
+Quick-start kit for a penalty-shootout bot. All shoot/keep directions are integers (`0`, `1`, `2`) everywhere in the protocol.
 
 ## 1. Quick Start Checklist
 
@@ -33,20 +33,20 @@ Test changes locally by exporting `SERVER_URL` and `GITHUB_TOKEN` and running `p
 
 - `playerIds`: every registered player ID (these are what you target in your action maps).
 - `myPlayerId`: the ID associated with your GitHub token.
-- `opponents`: convenience list of all other IDs.
+- `opponentsIds`: convenience list of all other IDs.
 - `state`: a list where each entry records one completed turn. Penalty shootout rounds look like:
   ```json
   [
     {
       "_turnId": 1,
       "player-id-A": {
-        "shoot": { "player-id-B": "2" },
-        "keep":  { "player-id-B": "0" },
+        "shoot": { "player-id-B": 2 },
+        "keep":  { "player-id-B": 0 },
         "outcome": { "player-id-B": { "goal": 1 } }
       },
       "player-id-B": {
-        "shoot": { "player-id-A": "1" },
-        "keep":  { "player-id-A": "2" },
+        "shoot": { "player-id-A": 1 },
+        "keep":  { "player-id-A": 2 },
         "outcome": { "player-id-A": { "goal": 0 } }
       }
     },
@@ -56,7 +56,7 @@ Test changes locally by exporting `SERVER_URL` and `GITHUB_TOKEN` and running `p
     }
   ]
   ```
-- `turn`, `registrationPhase`, `gamePhase`: metadata describing where the match is.
+- `turnId`, `registrationPhase`, `gamePhase`: metadata describing where the match is.
 
 Store or inspect this data to drive smarter strategies.
 
@@ -73,7 +73,7 @@ Your `strategy(state)` function must return a dictionary with two maps, one for 
 
 - `shoot` lists the direction (`0`, `1`, or `2`) you will shoot against each opponent.
 - `keep` lists the direction you will guard against each opponent.
-- Opponent IDs come straight from `playerIds`/`opponents` in the `/status` payload.
+- Opponent IDs come straight from `playerIds`/`opponentsIds` in the `/status` payload.
 
 Example: if the server identifies you as `"player-A"` and you face opponents `"player-B"` and `"player-C"`, one admissible return value is
 
