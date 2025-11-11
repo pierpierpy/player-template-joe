@@ -5,28 +5,25 @@ Quick-start kit for a penalty-shootout bot. All shoot/keep directions are intege
 ## 1. Quick Start Checklist
 
 1. **Copy the template** – Fork this repository into your own GitHub account if you want the automated player to run. You can clone first to experiment locally, but GitHub Actions only executes in your fork.
-2. **Choose your player name** – Decide the display name you want the server to show.
-3. **Register once (example below)**:
+2. **Set your player name** – Edit `register.py` and change `PLAYER_NAME` to the display name you want the server to show.
+3. **Register once (locally or via workflow)**:
    ```bash
    export SERVER_URL="https://ubx-dev-914970891924.us-central1.run.app"
    export GITHUB_TOKEN="ghp_example123"
-   PLAYER_NAME="player-template"
-   curl -sS -X POST "$SERVER_URL/register" \
-     -H "Content-Type: application/json" \
-     -H "Authorization: Bearer $GITHUB_TOKEN" \
-     -d "{\"player_name\":\"${PLAYER_NAME}\"}"
+   python register.py
    ```
+   Alternatively dispatch `.github/workflows/register.yml` from the Actions tab; it runs the same script.
 4. **Add secrets for automation** – In your fork visit **Settings → Secrets and variables → Actions** and create:
    - `GAME_TOKEN` – a fine-grained GitHub token with `Actions` and `Workflows` read/write scopes.
    - `SERVER_URL` – the base UBX server URL.
 
 ## 2. Registration
 
-Run the snippet above once (whenever you change the display name). The server returns the assigned `player_id`.
+Either run `python register.py` locally (after exporting `SERVER_URL`/`GITHUB_TOKEN`) or trigger `.github/workflows/register.yml`. Do this whenever you change `PLAYER_NAME`; the response includes the assigned `player_id`.
 
 ## 3. What the scripts do
 
-- The one-line `curl` command in the checklist handles registration by POSTing `{ "player_name": ... }` to `/register`. Run it once per fork (or whenever you change the name) so the server links your token to that player name.
+- `register.py` validates secrets, posts `{ "player_name": PLAYER_NAME }` to `/register`, and logs the result. The GitHub Action runs the same script on pushes.
 - `strategy.py` fetches `/status`, builds an action, and posts it back via `/action`. The default logic is random; customise it by editing `strategy(state)` (or adding helper functions) to pick `shoot`/`keep` directions based on the state history, opponent behaviour, etc. The function must still return the same dictionary shape so the payload remains valid.
 
 Test changes locally by exporting `SERVER_URL` and `GITHUB_TOKEN` and running `python strategy.py`. When you are happy with the behaviour, let the scheduled workflow keep submitting moves.
@@ -94,6 +91,7 @@ Example: if the server identifies you as `"player-A"` and you face opponents `"p
 
 ## 6. GitHub Actions
 
+- `.github/workflows/register.yml` registers (or re-registers) the player on push/dispatch.
 - `.github/workflows/schedule_strategy.yml` runs every 5 minutes and can also be triggered manually from the Actions tab.
 - Make sure `GAME_TOKEN` and `SERVER_URL` secrets are populated, then watch the workflow logs to confirm submissions.
 
