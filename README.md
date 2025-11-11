@@ -62,7 +62,7 @@ Your `strategy(state)` function must return a dictionary with two maps, one for 
 }
 ```
 
-- `shoot` lists the direction (`0`, `1`, or `2`) you will shoot against each opponent.
+- `shoot` lists the direction (integers `0`, `1`, or `2`) you will shoot against each opponent.
 - `keep` lists the direction you will guard against each opponent.
 - Opponent IDs come straight from `playerIds`/`opponentsIds` in the `/status` payload.
 
