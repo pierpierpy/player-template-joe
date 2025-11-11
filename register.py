@@ -10,11 +10,13 @@ def main() -> None:
     # Workflows and local runs both rely on these secrets.
     server_url = os.getenv("SERVER_URL", "").strip()
     github_token = os.getenv("GITHUB_TOKEN", "").strip()
+    player_name = os.getenv("PLAYER_NAME", "").strip()
 
     # Print what we know without leaking actual secrets.
     print(
         f"[register] Config state: SERVER_URL={'set' if server_url else 'missing'}, "
-        f"GITHUB_TOKEN={'set' if github_token else 'missing'}",
+        f"GITHUB_TOKEN={'set' if github_token else 'missing'}, "
+        f"PLAYER_NAME={'set' if player_name else 'missing'}",
         flush=True,
     )
 
@@ -22,6 +24,8 @@ def main() -> None:
         raise SystemExit("SERVER_URL environment variable not set")
     if not github_token:
         raise SystemExit("GITHUB_TOKEN environment variable not set")
+    if not player_name:
+        raise SystemExit("PLAYER_NAME environment variable not set")
 
     if not server_url.startswith(("http://", "https://")):
         raise SystemExit(f"SERVER_URL must include scheme (http/https); got '{server_url}'")
@@ -37,7 +41,7 @@ def main() -> None:
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {github_token}",
             },
-            json={"player_name": "player-template"},
+            json={"player_name": player_name},
             timeout=10,
         )
     except Exception as exc:  # pragma: no cover - network failure path
